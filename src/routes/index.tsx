@@ -1,8 +1,10 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { MonitorUp, KeyRound, Users, Lock, Zap, ArrowRight } from "lucide-react";
+import { MonitorUp, KeyRound, Users, Lock, Zap, Dices } from "lucide-react";
 import { Framed, Logo, StatusDot } from "@/components/gs/brand";
 import { GsButton, Panel } from "@/components/gs/controls";
+import heroLogo from "@/assets/gamestream-hero.png.asset.json";
+import { generateRoomCode, saveRoomCode } from "@/lib/room";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -18,19 +20,29 @@ export const Route = createFileRoute("/")({
         property: "og:description",
         content: "Compartilhe sua tela e assista junto com os amigos em salas privadas.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: Home,
 });
 
-const recentRooms = [
-  { code: "GS-7K2P", host: "Você", people: 4, when: "há 2 h" },
-  { code: "GS-3XQ9", host: "Lucas", people: 2, when: "ontem" },
-  { code: "GS-M04T", host: "Bia", people: 6, when: "seg." },
-];
-
 function Home() {
   const [code, setCode] = useState("");
+  const [myCode, setMyCode] = useState("");
+  const navigate = useNavigate();
+
+  const startHost = () => {
+    const c = myCode || generateRoomCode();
+    saveRoomCode(c);
+    void navigate({ to: "/host" });
+  };
+
+  const join = () => {
+    if (!code.trim()) return;
+    saveRoomCode(code.trim());
+    void navigate({ to: "/viewer" });
+  };
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 py-6 sm:px-6">
@@ -42,12 +54,14 @@ function Home() {
       </header>
 
       <main className="mt-8 flex-1 space-y-6">
-        <div>
-          <h1 className="font-display text-2xl font-bold leading-tight text-foreground sm:text-3xl">
-            SUA TELA. SUA SALA.{" "}
-            <span className="text-brand-gradient">SUA GALERA.</span>
-          </h1>
-          <p className="mt-2 max-w-xl text-sm text-muted-foreground">
+        <div className="flex flex-col items-center text-center">
+          <h1 className="sr-only">Game Stream — Sua tela. Sua sala. Sua galera.</h1>
+          <img
+            src={heroLogo.url}
+            alt="Game Stream — sua tela, sua sala, sua galera"
+            className="w-full max-w-2xl"
+          />
+          <p className="-mt-4 max-w-xl text-sm text-muted-foreground sm:-mt-8">
             Abra uma sala, manda o link no grupo e joguem juntos. Sem público, sem seguidores — só a
             sua galera.
           </p>
@@ -60,19 +74,30 @@ function Home() {
                 <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                   código da sua sala
                 </p>
-                <p className="mt-2 font-display text-3xl font-bold text-brand-gradient sm:text-4xl">
-                  GS-7K2P
+                <p
+                  className={
+                    myCode
+                      ? "mt-2 font-display text-3xl font-bold text-brand-gradient sm:text-4xl"
+                      : "mt-2 font-display text-3xl font-bold tracking-[0.25em] text-muted-foreground/50 sm:text-4xl"
+                  }
+                >
+                  {myCode || "······"}
                 </p>
               </Framed>
+              <GsButton
+                icon={Dices}
+                className="w-full"
+                onClick={() => setMyCode(generateRoomCode())}
+              >
+                {myCode ? "Gerar outro código" : "Gerar código"}
+              </GsButton>
               <p className="text-sm text-muted-foreground">
                 Você entra como host, compartilha a tela e controla áudio e qualidade.
               </p>
             </div>
-            <Link to="/host">
-              <GsButton variant="primary" icon={MonitorUp} className="w-full">
-                Compartilhar tela
-              </GsButton>
-            </Link>
+            <GsButton variant="primary" icon={MonitorUp} className="w-full" onClick={startHost}>
+              Compartilhar tela
+            </GsButton>
           </Panel>
 
           <Panel title="Entrar em uma sala" className="flex flex-col justify-between gap-6">
@@ -84,6 +109,7 @@ function Home() {
                 id="room-code"
                 value={code}
                 onChange={(e) => setCode(e.target.value.toUpperCase())}
+                onKeyDown={(e) => e.key === "Enter" && join()}
                 placeholder="GS-0000"
                 className="h-14 w-full rounded-xl border border-input bg-secondary/40 px-4 text-center font-display text-xl tracking-[0.3em] text-foreground outline-none transition-colors placeholder:text-muted-foreground/50 focus:border-cyan focus:shadow-[0_0_28px_-10px_var(--cyan)]"
               />
@@ -91,35 +117,11 @@ function Home() {
                 Recebeu um link? Ele abre a sala direto no player.
               </p>
             </div>
-            <Link to="/viewer">
-              <GsButton icon={KeyRound} className="w-full">
-                Entrar na sala
-              </GsButton>
-            </Link>
+            <GsButton icon={KeyRound} className="w-full" onClick={join} disabled={!code.trim()}>
+              Entrar na sala
+            </GsButton>
           </Panel>
         </div>
-
-        <Panel title="Salas recentes">
-          <ul className="grid gap-3 sm:grid-cols-3">
-            {recentRooms.map((r) => (
-              <li key={r.code}>
-                <Link
-                  to="/viewer"
-                  className="block rounded-xl border border-border bg-secondary/30 p-4 transition-all hover:border-electric/70 hover:shadow-[0_0_28px_-14px_var(--electric)]"
-                >
-                  <span className="font-display text-sm text-foreground">{r.code}</span>
-                  <span className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                    <Users size={14} /> {r.people} amigos · host {r.host}
-                  </span>
-                  <span className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
-                    {r.when}
-                    <ArrowRight size={14} className="text-electric" />
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </Panel>
 
         <ul className="grid gap-3 sm:grid-cols-3">
           {[
