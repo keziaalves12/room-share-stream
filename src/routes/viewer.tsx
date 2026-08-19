@@ -121,7 +121,36 @@ function ViewerScreen() {
     };
   }, [isFull]);
 
-  const participants = 4;
+  const participants: number = 1;
+
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [draft, setDraft] = useState("");
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  const [floating, setFloating] = useState<FloatingReaction[]>([]);
+
+  const sendMessage = () => {
+    const text = draft.trim();
+    if (!text) return;
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: Date.now() + Math.random(),
+        text,
+        time: new Date().toLocaleTimeString("pt-BR", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      },
+    ]);
+    setDraft("");
+    setEmojiOpen(false);
+  };
+
+  const react = (emoji: string) => {
+    const id = Date.now() + Math.random();
+    setFloating((prev) => [...prev, { id, emoji, left: 10 + Math.random() * 70 }]);
+    setTimeout(() => setFloating((prev) => prev.filter((r) => r.id !== id)), 2600);
+  };
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-5 sm:px-6">
