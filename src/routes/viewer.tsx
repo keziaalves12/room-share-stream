@@ -10,11 +10,23 @@ import {
   MessageSquare,
   Users,
   Play,
+  Smile,
 } from "lucide-react";
 import { Framed, Logo, StatusDot } from "@/components/gs/brand";
 import { GsButton, MetricRow, Panel } from "@/components/gs/controls";
 import { readRoomCode } from "@/lib/room";
 import { cn } from "@/lib/utils";
+
+const EMOJIS = [
+  "😀","😂","😍","😎","🤔","😱","😭","🥳",
+  "👍","👏","🙌","🔥","💥","🎮","🕹️","🏆",
+  "❤️","💙","✨","⚡","🚀","💯","🤣","😅",
+];
+
+const REACTIONS = ["👍", "❤️", "😂", "🎉", "👏", "🔥", "😮", "🎮"];
+
+type ChatMessage = { id: number; text: string; time: string };
+type FloatingReaction = { id: number; emoji: string; left: number };
 
 export const Route = createFileRoute("/viewer")({
   head: () => ({
