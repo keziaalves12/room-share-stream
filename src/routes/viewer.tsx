@@ -43,9 +43,17 @@ function ViewerScreen() {
   const [stats, setStats] = useState(true);
   const [room, setRoom] = useState("");
   const [isFull, setIsFull] = useState(false);
+  const [showHint, setShowHint] = useState(true);
+  const [overlayVisible, setOverlayVisible] = useState(true);
   const stageRef = useRef<HTMLDivElement>(null);
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => setRoom(readRoomCode()), []);
+
+  useEffect(() => {
+    const t = setTimeout(() => setShowHint(false), 6000);
+    return () => clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     const onChange = () => setIsFull(Boolean(document.fullscreenElement));
@@ -60,6 +68,46 @@ function ViewerScreen() {
       void stageRef.current?.requestFullscreen?.();
     }
   };
+
+  // Atalhos de teclado: F alterna, Esc sai
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && ["INPUT", "TEXTAREA"].includes(target.tagName)) return;
+      if (e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        toggleFullscreen();
+      }
+      if (e.key === "Escape" && document.fullscreenElement) {
+        void document.exitFullscreen();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  // Auto-ocultar os controles flutuantes em tela cheia
+  useEffect(() => {
+    if (!isFull) {
+      setOverlayVisible(true);
+      return;
+    }
+    const reveal = () => {
+      setOverlayVisible(true);
+      if (hideTimer.current) clearTimeout(hideTimer.current);
+      hideTimer.current = setTimeout(() => setOverlayVisible(false), 2800);
+    };
+    reveal();
+    window.addEventListener("mousemove", reveal);
+    window.addEventListener("touchstart", reveal);
+    window.addEventListener("keydown", reveal);
+    return () => {
+      window.removeEventListener("mousemove", reveal);
+      window.removeEventListener("touchstart", reveal);
+      window.removeEventListener("keydown", reveal);
+      if (hideTimer.current) clearTimeout(hideTimer.current);
+    };
+  }, [isFull]);
 
   const participants = 4;
 
