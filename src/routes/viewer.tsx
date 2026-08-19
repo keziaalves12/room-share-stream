@@ -43,9 +43,17 @@ function ViewerScreen() {
   const [stats, setStats] = useState(true);
   const [room, setRoom] = useState("");
   const [isFull, setIsFull] = useState(false);
+  const [showHint, setShowHint] = useState(true);
+  const [overlayVisible, setOverlayVisible] = useState(true);
   const stageRef = useRef<HTMLDivElement>(null);
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => setRoom(readRoomCode()), []);
+
+  useEffect(() => {
+    const t = setTimeout(() => setShowHint(false), 6000);
+    return () => clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     const onChange = () => setIsFull(Boolean(document.fullscreenElement));
@@ -60,6 +68,46 @@ function ViewerScreen() {
       void stageRef.current?.requestFullscreen?.();
     }
   };
+
+  // Atalhos de teclado: F alterna, Esc sai
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && ["INPUT", "TEXTAREA"].includes(target.tagName)) return;
+      if (e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        toggleFullscreen();
+      }
+      if (e.key === "Escape" && document.fullscreenElement) {
+        void document.exitFullscreen();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  // Auto-ocultar os controles flutuantes em tela cheia
+  useEffect(() => {
+    if (!isFull) {
+      setOverlayVisible(true);
+      return;
+    }
+    const reveal = () => {
+      setOverlayVisible(true);
+      if (hideTimer.current) clearTimeout(hideTimer.current);
+      hideTimer.current = setTimeout(() => setOverlayVisible(false), 2800);
+    };
+    reveal();
+    window.addEventListener("mousemove", reveal);
+    window.addEventListener("touchstart", reveal);
+    window.addEventListener("keydown", reveal);
+    return () => {
+      window.removeEventListener("mousemove", reveal);
+      window.removeEventListener("touchstart", reveal);
+      window.removeEventListener("keydown", reveal);
+      if (hideTimer.current) clearTimeout(hideTimer.current);
+    };
+  }, [isFull]);
 
   const participants = 4;
 
@@ -101,17 +149,52 @@ function ViewerScreen() {
                   </div>
                 </div>
               </Framed>
-              <span className="absolute left-3 top-3 flex items-center gap-2 rounded-full bg-background/70 px-2.5 py-1 text-[11px] text-foreground backdrop-blur">
-                <StatusDot tone="online" /> Conectado
-              </span>
-              <button
-                onClick={toggleFullscreen}
-                className="absolute bottom-3 right-3 flex items-center gap-2 rounded-full bg-background/70 px-3 py-1.5 text-[11px] text-foreground backdrop-blur transition-colors hover:text-cyan"
-                aria-label={isFull ? "Sair da tela cheia" : "Tela cheia total"}
+              <div
+                className={cn(
+                  "pointer-events-none absolute inset-0 transition-opacity duration-300",
+                  overlayVisible ? "opacity-100" : "opacity-0",
+                )}
               >
-                {isFull ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-                {isFull ? "Sair da tela cheia" : "Tela cheia total"}
-              </button>
+                <span className="absolute left-3 top-3 flex items-center gap-2 rounded-full bg-background/70 px-2.5 py-1 text-[11px] text-foreground backdrop-blur">
+                  <StatusDot tone="online" /> Conectado
+                </span>
+
+                {isFull && (
+                  <div className="pointer-events-auto absolute right-3 top-3 flex items-center gap-2">
+                    <button
+                      onClick={() => setMuted((v) => !v)}
+                      className="grid h-11 w-11 place-items-center rounded-full border border-border/70 bg-background/70 text-foreground backdrop-blur transition-colors hover:text-cyan"
+                      aria-label={muted ? "Ativar áudio" : "Silenciar"}
+                    >
+                      {muted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+                    </button>
+                    <button
+                      onClick={toggleFullscreen}
+                      className="flex h-11 items-center gap-2 rounded-full border border-magenta/60 bg-magenta/15 px-4 text-xs text-magenta backdrop-blur transition-colors hover:bg-magenta/25"
+                      aria-label="Sair da tela cheia"
+                    >
+                      <Minimize2 size={16} /> Sair da tela cheia
+                      <span className="hidden font-mono text-[10px] opacity-70 sm:inline">Esc</span>
+                    </button>
+                  </div>
+                )}
+
+                <button
+                  onClick={toggleFullscreen}
+                  className="pointer-events-auto absolute bottom-3 right-3 flex items-center gap-2 rounded-full bg-background/70 px-3 py-1.5 text-[11px] text-foreground backdrop-blur transition-colors hover:text-cyan"
+                  aria-label={isFull ? "Sair da tela cheia" : "Tela cheia total"}
+                >
+                  {isFull ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                  {isFull ? "Sair da tela cheia" : "Tela cheia total"}
+                </button>
+
+                {showHint && !isFull && (
+                  <span className="absolute bottom-3 left-3 rounded-full bg-background/70 px-3 py-1.5 text-[11px] text-muted-foreground backdrop-blur">
+                    Dica: clique duplo no vídeo ou tecle{" "}
+                    <span className="font-mono text-cyan">F</span> para tela cheia
+                  </span>
+                )}
+              </div>
             </div>
 
             <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-border/70 bg-secondary/30 px-3 py-2.5">
