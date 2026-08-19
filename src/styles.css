@@ -184,3 +184,22 @@
   animation: pulse-live 1.4s ease-in-out infinite;
 }
 
+
+@keyframes gs-float-up {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.6);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(-10%) scale(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-320px) scale(1.2);
+  }
+}
+
+.gs-float {
+  animation: gs-float-up 2.6s ease-out forwards;
+}
