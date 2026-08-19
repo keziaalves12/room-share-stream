@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   MonitorUp,
   Mic,
@@ -11,15 +11,17 @@ import {
   Terminal,
   Square,
   Check,
+  Dices,
 } from "lucide-react";
 import { Framed, Logo, StatusDot } from "@/components/gs/brand";
 import { GsButton, MetricRow, Panel, ToggleTile } from "@/components/gs/controls";
+import { generateRoomCode, readRoomCode, saveRoomCode } from "@/lib/room";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/host")({
   head: () => ({
     meta: [
-      { title: "Sala GS-7K2P · Host — Game Stream" },
+      { title: "Painel do Host — Game Stream" },
       {
         name: "description",
         content:
@@ -42,12 +44,6 @@ const qualities = [
   { id: "auto", label: "Automático", hint: "adapta à rede" },
 ];
 
-const friends = [
-  { name: "Lucas", state: "assistindo" },
-  { name: "Bia", state: "assistindo" },
-  { name: "Rafa", state: "conectando" },
-];
-
 const debugLines = [
   "[00:12] icegatheringstate → complete",
   "[00:12] connectionstate → connected",
@@ -63,6 +59,17 @@ function HostScreen() {
   const [quality, setQuality] = useState("1080p60");
   const [copied, setCopied] = useState<string | null>(null);
   const [showDebug, setShowDebug] = useState(true);
+  const [room, setRoom] = useState("");
+
+  useEffect(() => setRoom(readRoomCode()), []);
+
+  const regenerate = () => {
+    const c = generateRoomCode();
+    saveRoomCode(c);
+    setRoom(c);
+  };
+
+  const roomLink = room ? `gamestream.app/r/${room}` : "";
 
   const copy = (what: string, value: string) => {
     void navigator.clipboard?.writeText(value);
@@ -168,49 +175,55 @@ function HostScreen() {
         <aside className="min-w-0 space-y-4">
           <Panel title="Sua sala">
             <Framed className="rounded-xl bg-secondary/30 px-4 py-5 text-center" tone="magenta">
-              <p className="font-display text-2xl font-bold text-brand-gradient">GS-7K2P</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                código da sua sala
+              </p>
+              <p
+                className={cn(
+                  "mt-2 font-display text-2xl font-bold",
+                  room ? "text-brand-gradient" : "tracking-[0.25em] text-muted-foreground/50",
+                )}
+              >
+                {room || "······"}
+              </p>
             </Framed>
             <div className="mt-3 grid gap-2">
+              <GsButton icon={Dices} onClick={regenerate}>
+                {room ? "Gerar outro código" : "Gerar código"}
+              </GsButton>
               <GsButton
                 icon={copied === "code" ? Check : Copy}
-                onClick={() => copy("code", "GS-7K2P")}
+                disabled={!room}
+                onClick={() => copy("code", room)}
               >
                 {copied === "code" ? "Código copiado" : "Copiar código"}
               </GsButton>
               <GsButton
                 icon={copied === "link" ? Check : Link2}
-                onClick={() => copy("link", "https://gamestream.app/r/GS-7K2P")}
+                disabled={!room}
+                onClick={() => copy("link", `https://${roomLink}`)}
               >
                 {copied === "link" ? "Link copiado" : "Copiar link da sala"}
               </GsButton>
             </div>
-            <p className="mt-3 truncate rounded-lg border border-border/70 bg-secondary/30 px-3 py-2 font-mono text-xs text-muted-foreground">
-              gamestream.app/r/GS-7K2P
-            </p>
+            {room && (
+              <p className="mt-3 truncate rounded-lg border border-border/70 bg-secondary/30 px-3 py-2 font-mono text-xs text-muted-foreground">
+                {roomLink}
+              </p>
+            )}
           </Panel>
 
           <Panel
             title="Na sala"
             action={
               <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Users size={14} /> {friends.length}
+                <Users size={14} /> 0
               </span>
             }
           >
-            <ul className="space-y-2">
-              {friends.map((f) => (
-                <li
-                  key={f.name}
-                  className="flex items-center gap-3 rounded-lg border border-border/60 bg-secondary/30 px-3 py-2"
-                >
-                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-brand-gradient text-xs font-semibold text-primary-foreground">
-                    {f.name[0]}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-sm text-foreground">{f.name}</span>
-                  <StatusDot tone={f.state === "assistindo" ? "online" : "idle"} />
-                </li>
-              ))}
-            </ul>
+            <p className="text-sm text-muted-foreground">
+              Ninguém entrou ainda. Compartilhe o código ou o link da sala.
+            </p>
           </Panel>
 
           <Panel
