@@ -190,6 +190,33 @@ function ViewerScreen() {
                   </div>
                 </div>
               </Framed>
+
+              <div className="pointer-events-none absolute inset-0 overflow-hidden">
+                {floating.map((r) => (
+                  <span
+                    key={r.id}
+                    className="gs-float absolute bottom-16 text-4xl drop-shadow-[0_0_12px_rgba(0,0,0,0.6)]"
+                    style={{ left: `${r.left}%` }}
+                  >
+                    {r.emoji}
+                  </span>
+                ))}
+              </div>
+
+              <div className="pointer-events-auto absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full border border-border/70 bg-background/70 px-2 py-1.5 backdrop-blur">
+                {REACTIONS.slice(0, 6).map((e) => (
+                  <button
+                    key={e}
+                    type="button"
+                    onClick={() => react(e)}
+                    className="grid h-8 w-8 place-items-center rounded-full text-lg transition-transform hover:scale-125"
+                    aria-label={`Reagir com ${e}`}
+                  >
+                    {e}
+                  </button>
+                ))}
+              </div>
+
               <div
                 className={cn(
                   "pointer-events-none absolute inset-0 transition-opacity duration-300",
