@@ -10,11 +10,23 @@ import {
   MessageSquare,
   Users,
   Play,
+  Smile,
 } from "lucide-react";
 import { Framed, Logo, StatusDot } from "@/components/gs/brand";
 import { GsButton, MetricRow, Panel } from "@/components/gs/controls";
 import { readRoomCode } from "@/lib/room";
 import { cn } from "@/lib/utils";
+
+const EMOJIS = [
+  "😀","😂","😍","😎","🤔","😱","😭","🥳",
+  "👍","👏","🙌","🔥","💥","🎮","🕹️","🏆",
+  "❤️","💙","✨","⚡","🚀","💯","🤣","😅",
+];
+
+const REACTIONS = ["👍", "❤️", "😂", "🎉", "👏", "🔥", "😮", "🎮"];
+
+type ChatMessage = { id: number; text: string; time: string };
+type FloatingReaction = { id: number; emoji: string; left: number };
 
 export const Route = createFileRoute("/viewer")({
   head: () => ({
@@ -109,7 +121,36 @@ function ViewerScreen() {
     };
   }, [isFull]);
 
-  const participants = 4;
+  const participants: number = 1;
+
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [draft, setDraft] = useState("");
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  const [floating, setFloating] = useState<FloatingReaction[]>([]);
+
+  const sendMessage = () => {
+    const text = draft.trim();
+    if (!text) return;
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: Date.now() + Math.random(),
+        text,
+        time: new Date().toLocaleTimeString("pt-BR", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      },
+    ]);
+    setDraft("");
+    setEmojiOpen(false);
+  };
+
+  const react = (emoji: string) => {
+    const id = Date.now() + Math.random();
+    setFloating((prev) => [...prev, { id, emoji, left: 10 + Math.random() * 70 }]);
+    setTimeout(() => setFloating((prev) => prev.filter((r) => r.id !== id)), 2600);
+  };
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-5 sm:px-6">
@@ -149,6 +190,33 @@ function ViewerScreen() {
                   </div>
                 </div>
               </Framed>
+
+              <div className="pointer-events-none absolute inset-0 overflow-hidden">
+                {floating.map((r) => (
+                  <span
+                    key={r.id}
+                    className="gs-float absolute bottom-16 text-4xl drop-shadow-[0_0_12px_rgba(0,0,0,0.6)]"
+                    style={{ left: `${r.left}%` }}
+                  >
+                    {r.emoji}
+                  </span>
+                ))}
+              </div>
+
+              <div className="pointer-events-auto absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full border border-border/70 bg-background/70 px-2 py-1.5 backdrop-blur">
+                {REACTIONS.slice(0, 6).map((e) => (
+                  <button
+                    key={e}
+                    type="button"
+                    onClick={() => react(e)}
+                    className="grid h-8 w-8 place-items-center rounded-full text-lg transition-transform hover:scale-125"
+                    aria-label={`Reagir com ${e}`}
+                  >
+                    {e}
+                  </button>
+                ))}
+              </div>
+
               <div
                 className={cn(
                   "pointer-events-none absolute inset-0 transition-opacity duration-300",
@@ -276,20 +344,98 @@ function ViewerScreen() {
             }
           >
             <p className="text-sm text-muted-foreground">
-              {participants} pessoas conectadas nesta sala.
+              {participants === 1
+                ? "Só você por aqui. Compartilhe o link da sala para chamar a galera."
+                : `${participants} pessoas conectadas nesta sala.`}
             </p>
           </Panel>
 
           <Panel title="Chat da sala">
-            <p className="text-sm text-muted-foreground">
-              Nenhuma mensagem ainda. Diga um oi para a galera.
-            </p>
-            <div className="mt-4 grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+            <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
+              {messages.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Nenhuma mensagem ainda. Diga um oi para a galera.
+                </p>
+              ) : (
+                messages.map((m) => (
+                  <div
+                    key={m.id}
+                    className="rounded-lg border border-border/60 bg-secondary/30 px-3 py-2"
+                  >
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="text-[11px] font-medium text-cyan">Você</span>
+                      <span className="font-mono text-[10px] text-muted-foreground">{m.time}</span>
+                    </div>
+                    <p className="mt-0.5 break-words text-sm text-foreground">{m.text}</p>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {emojiOpen && (
+              <div className="mt-3 grid grid-cols-8 gap-1 rounded-xl border border-border/70 bg-secondary/40 p-2">
+                {EMOJIS.map((e) => (
+                  <button
+                    key={e}
+                    type="button"
+                    onClick={() => setDraft((d) => d + e)}
+                    className="grid h-8 place-items-center rounded-md text-lg transition-colors hover:bg-secondary"
+                    aria-label={`Inserir ${e}`}
+                  >
+                    {e}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                sendMessage();
+              }}
+              className="mt-4 grid grid-cols-[auto_minmax(0,1fr)_auto] gap-2"
+            >
+              <button
+                type="button"
+                onClick={() => setEmojiOpen((v) => !v)}
+                className={cn(
+                  "grid h-10 w-10 place-items-center rounded-lg border transition-colors",
+                  emojiOpen
+                    ? "border-cyan/60 text-cyan"
+                    : "border-border text-muted-foreground hover:text-foreground",
+                )}
+                aria-label="Emojis"
+              >
+                <Smile size={18} />
+              </button>
               <input
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
                 placeholder="Manda algo..."
                 className="h-10 min-w-0 rounded-lg border border-input bg-secondary/40 px-3 text-sm outline-none focus:border-electric"
               />
-              <GsButton icon={MessageSquare} className="h-10 w-10 px-0" aria-label="Enviar" />
+              <GsButton
+                type="submit"
+                icon={MessageSquare}
+                className="h-10 w-10 px-0"
+                aria-label="Enviar"
+              />
+            </form>
+          </Panel>
+
+          <Panel title="Reações">
+            <div className="flex flex-wrap gap-2">
+              {REACTIONS.map((e) => (
+                <button
+                  key={e}
+                  type="button"
+                  onClick={() => react(e)}
+                  className="grid h-10 w-10 place-items-center rounded-full border border-border bg-secondary/40 text-lg transition-transform hover:scale-110 hover:border-cyan/60"
+                  aria-label={`Reagir com ${e}`}
+                >
+                  {e}
+                </button>
+              ))}
             </div>
           </Panel>
         </aside>
